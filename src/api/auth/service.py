@@ -37,8 +37,19 @@ class AuthAPIService:
         if not user or not self.__verify(credentials.password, user.password):
             raise exc.InvalidCredentialsException()
 
-        access_token = self.create_token(user, JWTType.ACCESS)
-        refresh_token = self.create_token(user, JWTType.REFRESH)
+        token_schema = self.get_token_schema(source=user)
+        return token_schema
+
+    async def refresh_token(self, payload: PayloadSchema) -> AccessTokenSchema:
+        if payload.typ != JWTType.REFRESH:
+            raise exc.InvalidTokenTypeException(JWTType.REFRESH)
+
+        token_schema = self.get_token_schema(source=payload)
+        return token_schema
+
+    def get_token_schema(self, source: User | PayloadSchema) -> AccessTokenSchema:
+        access_token = self.create_token(token_type=JWTType.ACCESS, source=source)
+        refresh_token = self.create_token(token_type=JWTType.REFRESH, source=source)
         return AccessTokenSchema(
             access_token=access_token,
             refresh_token=refresh_token,
@@ -65,14 +76,18 @@ class AuthAPIService:
             raise exc.TokenDecodeException()
         return PayloadSchema(**payload)
 
-    def create_token(self, user: User, token_type: JWTType):
-        payload = PayloadSchema(
-            sub=str(user.id),
-            email=user.email,  # type: ignore
-            is_activated=user.is_activated,
-            typ=token_type,
-            **self.__generate_iat_and_exp(token_type),
-        )
+    def create_token(self, token_type: JWTType, source: User | PayloadSchema):
+        if isinstance(source, User):
+            payload = PayloadSchema(
+                sub=str(source.id),
+                email=source.email,  # type: ignore
+                is_activated=source.is_activated,
+                typ=token_type,
+                **self.__generate_iat_and_exp(token_type),
+            )
+        elif isinstance(source, PayloadSchema):
+            payload = source.model_copy(update=self.__generate_iat_and_exp(token_type))
+            payload.typ = token_type
         return self.encode_jwt(payload)
 
     @staticmethod
