@@ -1,7 +1,9 @@
 from datetime import datetime
 from typing import Annotated
 from annotated_types import Len, Gt
-from pydantic import BaseModel, EmailStr, field_validator
+from pydantic import BaseModel, EmailStr
+
+from api.profiles.schemas import GetProfileWithoutUserSchema
 
 
 class BaseUserSchema(BaseModel):
@@ -13,6 +15,10 @@ class GetUserSchema(BaseUserSchema):
     id: Annotated[int, Gt(0)]
     created_at: datetime
     is_activated: bool
+
+
+class GetUserWithProfileSchema(GetUserSchema):
+    profile: GetProfileWithoutUserSchema
 
 
 class CreateUserSchema(BaseUserSchema):
