@@ -4,6 +4,7 @@ from fastapi import APIRouter, status
 
 from .schemas import (
     GetUserSchema,
+    GetUserWithProfileSchema,
     CreateUserSchema,
     UpdateUserSchema,
     PartialUpdateUserSchema,
@@ -16,7 +17,7 @@ router = APIRouter(prefix="/users", tags=["Пользователи"])
 int_gt_0 = Annotated[int, Gt(0)]
 
 
-@router.get("/", response_model=list[GetUserSchema])
+@router.get("/", response_model=list[GetUserWithProfileSchema])
 async def handle_get_users(service: service_dep):
     return await service.get_users()
 
