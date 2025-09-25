@@ -24,6 +24,7 @@ class User(Base):
         default=lambda: datetime.now(timezone.utc),
         server_default=func.now(),
     )
+    is_activated: Mapped[bool] = mapped_column(default=False)
 
     profile: Mapped["Profile"] = relationship(back_populates="user")
 
