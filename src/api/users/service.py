@@ -30,6 +30,15 @@ class UserAPIService(BaseAPIService):
             raise exc.UserNotFoundException()
         return user
 
+    async def get_user_by(self, need_raise_exception: bool = True, **by) -> User:
+        stmt = select(User).filter_by(**by)
+        result = await self.session.execute(stmt)
+        user = result.scalar_one_or_none()
+
+        if not user and need_raise_exception:
+            raise exc.UserNotFoundException()
+        return user
+
     async def create_user(self, schema: CreateUserSchema) -> User:
         schema.password = self.__hash_password(schema.password)
         new_user = User(**schema.model_dump())
