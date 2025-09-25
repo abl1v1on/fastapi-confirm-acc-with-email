@@ -5,7 +5,7 @@ from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 
 from core import BaseAPIService
-from core.models import User
+from core.models import User, Profile
 from .schemas import (
     CreateUserSchema,
     UpdateUserSchema,
@@ -33,19 +33,24 @@ class UserAPIService(BaseAPIService):
     async def create_user(self, schema: CreateUserSchema) -> User:
         schema.password = self.__hash_password(schema.password)
         new_user = User(**schema.model_dump())
-        self.session.add(new_user)
+        new_profile = Profile()
 
         try:
-            await self.session.commit()
-        except IntegrityError as e:
-            await self.session.rollback()
+            async with self.session.begin():
+                self.session.add(new_user)
+                await self.session.flush()
 
+                new_profile.user_id = new_user.id
+                self.session.add(new_profile)
+
+        except IntegrityError as e:
             err_msg = str(e.orig)
 
             if "uq_user_username" in err_msg:
                 raise exc.UsernameIsBusyException()
             elif "uq_user_email" in err_msg:
                 raise exc.EmailIsBusyException()
+
         return new_user
 
     async def update_user(
