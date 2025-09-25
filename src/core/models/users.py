@@ -1,5 +1,6 @@
+from typing import TYPE_CHECKING
 from datetime import datetime, timezone
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy import (
     String,
     CheckConstraint,
@@ -10,6 +11,9 @@ from sqlalchemy import (
 
 from .base import Base
 
+if TYPE_CHECKING:
+    from .profiles import Profile
+
 
 class User(Base):
     username: Mapped[str] = mapped_column(String(60), unique=True)
@@ -19,6 +23,8 @@ class User(Base):
         default=lambda: datetime.now(timezone.utc),
         server_default=func.now(),
     )
+
+    profile: Mapped["Profile"] = relationship(back_populates="user")
 
     __table_args__ = (
         UniqueConstraint("username", name="uq_user_username"),
