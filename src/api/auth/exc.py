@@ -1,5 +1,7 @@
 from fastapi import HTTPException, status
 
+from .schemas import JWTType
+
 
 class InvalidCredentialsException(HTTPException):
     def __init__(self) -> None:
@@ -26,8 +28,8 @@ class TokenDecodeException(HTTPException):
 
 
 class InvalidTokenTypeException(HTTPException):
-    def __init__(self) -> None:
+    def __init__(self, token_type: JWTType = JWTType.ACCESS) -> None:
         super().__init__(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="token type must be access",
+            detail=f"token type must be {token_type.value}",
         )
