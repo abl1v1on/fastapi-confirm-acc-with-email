@@ -1,7 +1,7 @@
 from enum import Enum
 from typing import Annotated
-from pydantic_core import PydanticCustomError
 from annotated_types import Len
+from datetime import datetime
 from pydantic import BaseModel, EmailStr
 
 
@@ -19,6 +19,8 @@ class PayloadSchema(BaseModel):
     sub: str
     email: EmailStr
     is_activated: bool
+    iat: datetime
+    exp: datetime
     typ: JWTType
 
 
