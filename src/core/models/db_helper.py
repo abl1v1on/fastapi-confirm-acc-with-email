@@ -22,4 +22,6 @@ class DBHelper:
 
 
 helper = DBHelper()
-session_dep = Annotated[AsyncSession, Depends(helper.session_dependency)]
+session_dep: type[AsyncSession] = Annotated[
+    AsyncSession, Depends(helper.session_dependency)
+]
