@@ -32,8 +32,8 @@ class ServerSettings(BaseModel):
 
 
 class JWTSettings(BaseModel):
-    public_key: str = (BASE_DIR / "certs" / "jwt-private.pem").read_text()
-    private_key: str = (BASE_DIR / "certs" / "jwt-public.pem").read_text()
+    public_key: str = (BASE_DIR / "certs" / "jwt-public.pem").read_text()
+    private_key: str = (BASE_DIR / "certs" / "jwt-private.pem").read_text()
     algorithm: str = "RS256"
     access_token_expire_minutes: int = 10
     refresh_token_expire_days: int = 30
@@ -45,9 +45,7 @@ class Settings(BaseSettings):
     jwt: JWTSettings = JWTSettings()
 
     model_config = SettingsConfigDict(
-        env_file=".env",
-        case_sensitive=False,
-        env_nested_delimiter="__"
+        env_file=".env", case_sensitive=False, env_nested_delimiter="__"
     )
 
 
