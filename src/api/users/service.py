@@ -2,6 +2,7 @@ import bcrypt
 from fastapi import Depends
 from typing import Sequence, Annotated
 from sqlalchemy import select
+from sqlalchemy.orm import joinedload
 from sqlalchemy.exc import IntegrityError
 
 from core import BaseAPIService
@@ -16,7 +17,7 @@ from . import exc
 
 class UserAPIService(BaseAPIService):
     async def get_users(self) -> Sequence[User]:
-        stmt = select(User).order_by(User.id.desc())
+        stmt = select(User).options(joinedload(User.profile)).order_by(User.id.desc())
         result = await self.session.execute(stmt)
         users = result.scalars().all()
         return users
