@@ -18,6 +18,7 @@ if TYPE_CHECKING:
 class User(Base):
     username: Mapped[str] = mapped_column(String(60), unique=True)
     email: Mapped[str] = mapped_column(String(256), unique=True)
+    password: Mapped[str]
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         default=lambda: datetime.now(timezone.utc),
