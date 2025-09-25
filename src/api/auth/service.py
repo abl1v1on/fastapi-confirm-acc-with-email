@@ -1,10 +1,9 @@
 import jwt
 import bcrypt
 from typing import Annotated
-from fastapi import Depends, HTTPException, status
+from fastapi import Depends
 from datetime import datetime, timezone, timedelta
-
-from sqlalchemy.ext.asyncio import AsyncSession
+from jwt.exceptions import ExpiredSignatureError, DecodeError
 
 from core import settings
 from core.models import User, helper
@@ -15,6 +14,7 @@ from .schemas import (
     AccessTokenSchema,
     AuthCredentialsSchema,
 )
+from . import exc
 
 
 class AuthAPIService:
@@ -35,10 +35,7 @@ class AuthAPIService:
             )
 
         if not user or not self.__verify(credentials.password, user.password):
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="invalid username or password",
-            )
+            raise exc.InvalidCredentialsException()
 
         access_token = self.create_token(user, JWTType.ACCESS)
         refresh_token = self.create_token(user, JWTType.REFRESH)
@@ -55,6 +52,19 @@ class AuthAPIService:
         )
         return token
 
+    def decode_jwt(self, token: str) -> PayloadSchema:
+        try:
+            payload = jwt.decode(
+                jwt=token,
+                key=self.public_key,
+                algorithms=[self.algorithm],
+            )
+        except ExpiredSignatureError:
+            raise exc.TokenHasExpiredException()
+        except DecodeError:
+            raise exc.TokenDecodeException()
+        return PayloadSchema(**payload)
+
     def create_token(self, user: User, token_type: JWTType):
         payload = PayloadSchema(
             sub=str(user.id),
@@ -64,14 +74,6 @@ class AuthAPIService:
             **self.__generate_iat_and_exp(token_type),
         )
         return self.encode_jwt(payload)
-
-    def decode_jwt(self, token: str) -> PayloadSchema:
-        payload = jwt.decode(
-            jwt=token,
-            key=self.public_key,
-            algorithms=[self.algorithm],
-        )
-        return PayloadSchema(**payload)
 
     @staticmethod
     def __verify(password: str, hashed_password: str) -> bool:
