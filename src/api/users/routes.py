@@ -23,7 +23,7 @@ async def handle_get_users(service: service_dep):
 
 @router.get("/{user_id}", response_model=GetUserSchema)
 async def handle_get_user(service: service_dep, user_id: int_gt_0):
-    return await service.get_user(user_id)
+    return await service.get_user_by_id(user_id)
 
 
 @router.post("/", response_model=GetUserSchema, status_code=status.HTTP_201_CREATED)

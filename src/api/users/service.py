@@ -21,7 +21,7 @@ class UserAPIService(BaseAPIService):
         users = result.scalars().all()
         return users
 
-    async def get_user(self, user_id: int) -> User:
+    async def get_user_by_id(self, user_id: int) -> User:
         stmt = select(User).where(User.id == user_id)
         result = await self.session.execute(stmt)
         user = result.scalar_one_or_none()
@@ -58,7 +58,7 @@ class UserAPIService(BaseAPIService):
         user_id: int,
         schema: UpdateUserSchema | PartialUpdateUserSchema,
     ) -> User:
-        user = await self.get_user(user_id)
+        user = await self.get_user_by_id(user_id)
         is_partial = isinstance(schema, PartialUpdateUserSchema)
 
         for key, value in schema.model_dump(exclude_none=is_partial).items():
@@ -78,7 +78,7 @@ class UserAPIService(BaseAPIService):
         return user
 
     async def delete_user(self, user_id: int) -> None:
-        user = await self.get_user(user_id)
+        user = await self.get_user_by_id(user_id)
         await self.session.delete(user)
         await self.session.commit()
 
