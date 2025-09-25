@@ -23,3 +23,11 @@ class TokenDecodeException(HTTPException):
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="token decode error",
         )
+
+
+class InvalidTokenTypeException(HTTPException):
+    def __init__(self) -> None:
+        super().__init__(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="token type must be access",
+        )
