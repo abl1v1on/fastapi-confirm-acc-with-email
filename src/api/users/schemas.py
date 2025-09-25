@@ -12,6 +12,7 @@ class BaseUserSchema(BaseModel):
 class GetUserSchema(BaseUserSchema):
     id: Annotated[int, Gt(0)]
     created_at: datetime
+    is_activated: bool
 
 
 class CreateUserSchema(BaseUserSchema):
