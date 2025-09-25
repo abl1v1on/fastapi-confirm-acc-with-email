@@ -1,3 +1,4 @@
+import bcrypt
 from fastapi import Depends
 from typing import Sequence, Annotated
 from sqlalchemy import select
@@ -30,6 +31,7 @@ class UserAPIService(BaseAPIService):
         return user
 
     async def create_user(self, schema: CreateUserSchema) -> User:
+        schema.password = self.__hash_password(schema.password)
         new_user = User(**schema.model_dump())
         self.session.add(new_user)
 
@@ -74,6 +76,12 @@ class UserAPIService(BaseAPIService):
         user = await self.get_user(user_id)
         await self.session.delete(user)
         await self.session.commit()
+
+    @staticmethod
+    def __hash_password(password: str) -> str:
+        salt = bcrypt.gensalt()
+        hashed = bcrypt.hashpw(password=password.encode(), salt=salt)
+        return hashed.decode()
 
 
 service_dep: type[UserAPIService] = Annotated[
