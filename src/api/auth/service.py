@@ -1,5 +1,9 @@
+from email.message import EmailMessage
+
+import aiosmtplib
 import jwt
 import bcrypt
+import secrets
 from typing import Annotated
 from fastapi import Depends
 from datetime import datetime, timezone, timedelta
@@ -105,6 +109,50 @@ class AuthAPIService:
         elif token_type == JWTType.REFRESH:
             exp = iat + timedelta(days=settings.jwt.refresh_token_expire_days)
         return {"iat": iat, "exp": exp}
+
+
+class EmailService:
+    def __init__(self) -> None:
+        self.sender = settings.email.sender
+        self.env = settings.email.env
+
+    async def send_message(self, recipient: str) -> None:
+        message = self.__collect_message(recipient)
+        await aiosmtplib.send(
+            message,
+            hostname=settings.email.host,
+            port=settings.email.port,
+            sender=self.sender,
+            recipients=[recipient],
+        )
+
+    def __collect_message(
+        self,
+        recipient: str,
+        subject: str = settings.email.default_subject,
+    ) -> EmailMessage:
+        message = EmailMessage()
+        message["From"] = self.sender
+        message["To"] = recipient
+        message["Subject"] = subject
+
+        confirmation_code = self.__generate_confirmation_code()
+
+        message.set_content(settings.email.default_plain_text)
+        message.add_alternative(
+            self.__generate_html_content(confirmation_code), subtype="html"
+        )
+
+        return message
+
+    @staticmethod
+    def __generate_confirmation_code() -> str:
+        return str(secrets.randbelow(900000) + 100000)
+
+    def __generate_html_content(self, confirmation_code: str):
+        template = self.env.get_template("message.html")
+        html_content = template.render(code=confirmation_code)
+        return html_content
 
 
 service_dep: type[AuthAPIService] = Annotated[
