@@ -41,7 +41,7 @@ class JWTSettings(BaseModel):
     refresh_token_expire_days: int = 30
 
 
-class EmailSettings(BaseModel):
+class EmailSettings(BaseSettings):
     sender: str = "admin@admin.com"
     host: str = "localhost"
     port: int = 1025
