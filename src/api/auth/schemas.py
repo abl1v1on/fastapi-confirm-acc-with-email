@@ -28,3 +28,7 @@ class AccessTokenSchema(BaseModel):
     access_token: str
     refresh_token: str
     typ: str = "Bearer"
+
+
+class ConfirmCodeSchema(BaseModel):
+    code: Annotated[str, Len(6, 6)]
