@@ -1,4 +1,6 @@
 from pathlib import Path
+
+from jinja2 import FileSystemLoader, Environment
 from pydantic import BaseModel
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -39,10 +41,21 @@ class JWTSettings(BaseModel):
     refresh_token_expire_days: int = 30
 
 
+class EmailSettings(BaseModel):
+    sender: str = "admin@admin.com"
+    host: str = "localhost"
+    port: int = 1025
+    env: Environment = Environment(loader=FileSystemLoader(BASE_DIR / "templates"))
+
+    default_subject: str = "Активируйте ваш аккаунт"
+    default_plain_text: str = "Ваш почтовый клиент не поддерживает HTML"
+
+
 class Settings(BaseSettings):
     db: DBSettings
     server: ServerSettings = ServerSettings()
     jwt: JWTSettings = JWTSettings()
+    email: EmailSettings = EmailSettings()
 
     model_config = SettingsConfigDict(
         env_file=".env", case_sensitive=False, env_nested_delimiter="__"
