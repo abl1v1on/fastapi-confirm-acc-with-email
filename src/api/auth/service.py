@@ -1,11 +1,10 @@
-from email.message import EmailMessage
-
-import aiosmtplib
 import jwt
 import bcrypt
 import secrets
+import aiosmtplib
 from typing import Annotated
 from fastapi import Depends
+from email.message import EmailMessage
 from datetime import datetime, timezone, timedelta
 from jwt.exceptions import ExpiredSignatureError, DecodeError
 
@@ -17,6 +16,7 @@ from .schemas import (
     JWTType,
     AccessTokenSchema,
     AuthCredentialsSchema,
+    ConfirmCodeSchema,
 )
 from . import exc
 
@@ -41,19 +41,23 @@ class AuthAPIService:
         if not user or not self.__verify(credentials.password, user.password):
             raise exc.InvalidCredentialsException()
 
-        token_schema = self.get_token_schema(source=user)
+        token_schema = self.get_token_schema(user)
         return token_schema
 
-    async def refresh_token(self, payload: PayloadSchema) -> AccessTokenSchema:
+    async def refresh_token(
+        self,
+        user: User,
+        payload: PayloadSchema,
+    ) -> AccessTokenSchema:
         if payload.typ != JWTType.REFRESH:
             raise exc.InvalidTokenTypeException(JWTType.REFRESH)
 
-        token_schema = self.get_token_schema(source=payload)
+        token_schema = self.get_token_schema(user=user)
         return token_schema
 
-    def get_token_schema(self, source: User | PayloadSchema) -> AccessTokenSchema:
-        access_token = self.create_token(token_type=JWTType.ACCESS, source=source)
-        refresh_token = self.create_token(token_type=JWTType.REFRESH, source=source)
+    def get_token_schema(self, user: User) -> AccessTokenSchema:
+        access_token = self.create_token(token_type=JWTType.ACCESS, user=user)
+        refresh_token = self.create_token(token_type=JWTType.REFRESH, user=user)
         return AccessTokenSchema(
             access_token=access_token,
             refresh_token=refresh_token,
@@ -80,19 +84,30 @@ class AuthAPIService:
             raise exc.TokenDecodeException()
         return PayloadSchema(**payload)
 
-    def create_token(self, token_type: JWTType, source: User | PayloadSchema):
-        if isinstance(source, User):
-            payload = PayloadSchema(
-                sub=str(source.id),
-                email=source.email,  # type: ignore
-                is_activated=source.is_activated,
-                typ=token_type,
-                **self.__generate_iat_and_exp(token_type),
-            )
-        elif isinstance(source, PayloadSchema):
-            payload = source.model_copy(update=self.__generate_iat_and_exp(token_type))
-            payload.typ = token_type
+    def create_token(self, token_type: JWTType, user: User):
+        payload = PayloadSchema(
+            sub=str(user.id),
+            email=user.email,  # type: ignore
+            is_activated=user.is_activated,
+            typ=token_type,
+            **self.__generate_iat_and_exp(token_type),
+        )
         return self.encode_jwt(payload)
+
+    async def activate_user(self, payload: PayloadSchema) -> AccessTokenSchema:
+        async with helper.session_factory() as session:
+            users_service = UserAPIService(session)
+            user_id = int(payload.sub)
+            user = await users_service.get_user_by_id(user_id)
+
+            if user.is_activated:
+                raise exc.UserAlreadyActivatedException()
+
+            user.is_activated = True
+            await session.commit()
+
+            token_schema = self.get_token_schema(user)
+        return token_schema
 
     @staticmethod
     def __verify(password: str, hashed_password: str) -> bool:
@@ -116,8 +131,17 @@ class EmailService:
         self.sender = settings.email.sender
         self.env = settings.email.env
 
-    async def send_message(self, recipient: str) -> None:
-        message = self.__collect_message(recipient)
+    async def send_activation_code(self, payload: PayloadSchema) -> ConfirmCodeSchema:
+        if payload.is_activated:
+            raise exc.UserAlreadyActivatedException()
+
+        recipient = str(payload.email)
+        confirmation_code = self.generate_confirmation_code()
+        await self.send_message(confirmation_code, recipient)
+        return ConfirmCodeSchema(code=confirmation_code)
+
+    async def send_message(self, confirmation_code: str, recipient: str) -> None:
+        message = self.__collect_message(confirmation_code, recipient)
         await aiosmtplib.send(
             message,
             hostname=settings.email.host,
@@ -128,6 +152,7 @@ class EmailService:
 
     def __collect_message(
         self,
+        confirmation_code: str,
         recipient: str,
         subject: str = settings.email.default_subject,
     ) -> EmailMessage:
@@ -135,8 +160,6 @@ class EmailService:
         message["From"] = self.sender
         message["To"] = recipient
         message["Subject"] = subject
-
-        confirmation_code = self.__generate_confirmation_code()
 
         message.set_content(settings.email.default_plain_text)
         message.add_alternative(
@@ -146,7 +169,7 @@ class EmailService:
         return message
 
     @staticmethod
-    def __generate_confirmation_code() -> str:
+    def generate_confirmation_code() -> str:
         return str(secrets.randbelow(900000) + 100000)
 
     def __generate_html_content(self, confirmation_code: str):
@@ -158,4 +181,8 @@ class EmailService:
 service_dep: type[AuthAPIService] = Annotated[
     AuthAPIService,
     Depends(AuthAPIService),
+]
+email_service_dep: type[EmailService] = Annotated[
+    EmailService,
+    Depends(EmailService),
 ]
