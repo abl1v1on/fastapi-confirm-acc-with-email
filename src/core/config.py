@@ -51,11 +51,17 @@ class EmailSettings(BaseSettings):
     default_plain_text: str = "Ваш почтовый клиент не поддерживает HTML"
 
 
+class RabbitMqSettings(BaseModel):
+    USER: str
+    PASS: str
+
+
 class Settings(BaseSettings):
     db: DBSettings
     server: ServerSettings = ServerSettings()
     jwt: JWTSettings = JWTSettings()
     email: EmailSettings = EmailSettings()
+    rabbitmq: RabbitMqSettings
 
     model_config = SettingsConfigDict(
         env_file=".env", case_sensitive=False, env_nested_delimiter="__"
